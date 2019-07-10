@@ -40,20 +40,12 @@ int main ( int argc, char** argv )
 
     cout << "create groundtruth and estimiation for poses..." << endl;
     createPoses(nPoses,truePoses, noisePoses);
-/*    for (int i = 0; i < truePoses.size(); i++) {
-        cout << "true pose " << truePoses[i]->id_ << " is " << endl << truePoses[i]->pose_.matrix() << endl;
-    }
-    */
 
     // create 3d point groundtruth, add noise to generate estimated point
     vector<BAPoint::Ptr> truePoints, noisePoints;
     cout << "create groundtruth and estimiation for points..." << endl;
     createPoints(nPoints, width, height, camera, truePoses, truePoints, noisePoints);
-   // cout << "number of point is " << truePoints.size() << endl;
-   // cout << "points created done..." << endl;
-   /* for (int i = 0; i < truePoints.size(); i++) {
-        cout << "true point " << truePoints[i]->id_ << " is " << endl << truePoints[i]->point_ << endl;
-    }*/
+
 
     /*********************** full BA test *******************************/
     int k = 0;
@@ -91,22 +83,6 @@ int main ( int argc, char** argv )
         optimizer.addPoint(noisePoints[i]);
     }
 
-/*
-    for (int i = 0; i < optimizer.poses_.size(); i++) {
-        cout << "true pose " << truePoses[i]->id_ << " is " << endl << truePoses[i]->pose_.matrix() << endl;
-        cout << "estimated pose " << optimizer.poses_[i]->id_ << " is " << endl << optimizer.poses_[i]->pose_.matrix() << endl;
-    }
-    for (int i = 0; i < optimizer.points_.size(); i++) {
-        cout << "estimated point " << optimizer.points_[i]->id_ << " is " << endl << optimizer.points_[i]->point_ << endl;
-        for (int j = 0; j < optimizer.errors_.size(); j++) {
-            if (optimizer.errors_[j]->point3d_->id_ == optimizer.points_[i]->id_){
-                cout << "it can be observed at error " << optimizer.errors_[j]->id_
-                << " at pose " << optimizer.errors_[j]->pose_->id_ <<
-                " at pixel " << endl << optimizer.errors_[j]->point2d_ << endl;
-            }
-        }
-    }
- */
 
     cout << "run optmize..." << endl;
     // run optimize

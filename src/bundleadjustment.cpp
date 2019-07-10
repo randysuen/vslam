@@ -59,6 +59,10 @@ namespace vslam {
         }
     }
 
+    void BAOptimizer::setHuber(double huber) {
+        huber_ = huber;
+    }
+
     void BAOptimizer::setVerbose(bool verbose) {
         verbose_ = verbose;
     }
@@ -84,31 +88,6 @@ namespace vslam {
         double lastSumError2 = sumError2_;
 
 
-     /*   if (verbose_) {
-            cout << "*************************before optimization******************************" << endl;
-            for (int i = 0; i < poses_.size(); i++) {
-                BAPose::Ptr pose = poses_[i];
-                cout << "pose " << pose->id_ << " is " << endl << pose->pose_.matrix() << endl;
-            }
-            for (int i = 0; i < points_.size(); i++) {
-                BAPoint::Ptr point = points_[i];
-                cout << "point " << point->id_ << " is " << endl << point->point_ << endl;
-            }
-
-            for (int i = 0; i < errors_.size(); i++) {
-                BAError::Ptr term = errors_[i];
-                cout << "in error " << term->id_ << " pose " << term->pose_->id_ << " is " << endl
-                     << term->pose_->pose_.matrix() << endl;
-                cout << "point 3d " << term->point3d_->id_ << " is " << endl << term->point3d_->point_ << endl;
-                cout << "point 2d is " << endl << term->point2d_ << endl;
-            }
-        }*/
-
-
-
-        //cout << "g is " << endl << g_ << endl;
-        //cout << "g max is " << g_.lpNorm<Eigen::Infinity>() << endl;
-
         bool found = g_.lpNorm<Eigen::Infinity>() <= epsilon1_;
 
         mu_ = tau_ * maxDiaH_;
@@ -119,34 +98,14 @@ namespace vslam {
 
             Runtimer t;
             t.start();
-
-         //   cout << "*********************** iterator " << k << " ***************************** " << endl;
             k++;
 
-        //    cout << "before update, g is " << endl << g_ << endl;
-         /*   cout << "before update, g max is " << g_.lpNorm<Eigen::Infinity>() << endl;
-            for (int i=0; i < poses_.size(); i++) {
-                cout << "pose " << i << " is " << endl << poses_[i]->pose_.matrix() << endl;
-            }*/
-         //   cout << "mu = " << mu_ << endl << "upsilon = " << upsilon_ << endl;
-
             constructEquation();
-       //     cout << "normal equation building done..." << endl;
-       //     cout <<"full HH is " << endl << HH_ << endl;
-       //     cout << "full ee is " << endl << e_ << endl;
-       //     cout << "full gg is" << endl << gg_ << endl;
-
-
 
             marginalize();
-       //     cout << "marginalize done..." << endl;
-        //    cout << "S = " << endl << S_ << endl;
-        //    cout << "gs = " << endl << gs_ << endl;
 
             solveEquation();
-        //    cout << "solve equation done..." << endl;
-        //    cout << "delta x is " << endl << delta_x_ << endl;
-        //    cout << "||delta x||2 is " << delta_x_.norm() << endl;
+
 
             if (delta_x_.norm() <= epsilon2_) {
                 found = true;
@@ -156,43 +115,18 @@ namespace vslam {
                 updateStates();
                 computeHg();
 
-              //  cout << "after update, g is " << endl << g_ << endl;
-              //  cout << "after update, g max is " << g_.lpNorm<Eigen::Infinity>() << endl;
-            /*    for (int i=0; i < poses_.size(); i++) {
-                    cout << "pose " << i << " is " << endl << poses_[i]->pose_.matrix() << endl;
-                }*/
-              /*  for (int i = 0; i < errors_.size(); i++) {
-                    BAError::Ptr term = errors_[i];
-                    curSumError2 += error2(term);
-                } */
-             //   cout << "last sum error2 is " << lastSumError2 << endl;
-          //      cout << "current sum error2 is " << sumError2_ << endl;
                 double rho = (lastSumError2 - sumError2_)/(delta_x_.transpose()*(mu_*delta_x_+g_));
-             //   cout << "rho = " << rho << endl;
                 if (rho > 0) {      // step acceptable
-                    cout << "states update done..." << endl;
-                    //cout << "temp = " << 1-std::pow((2*rho-1), 3) << endl;
                     lastSumError2 = sumError2_;
                     mu_ = mu_ * std::max<double>(1.0/3.0f, 1-std::pow((2*rho-1), 3));
                     upsilon_ = 2;
                     found = g_.lpNorm<Eigen::Infinity>() <= epsilon1_;
-            //        cout << "mu = " << mu_ << endl << "upsilon = " << upsilon_ << endl;
                 }
                 else {
                     recoverStates();
                     computeHg();
-            //        cout << "after recover, g is " << endl << g_ << endl;
-             //       cout << "after recover, g max is " << g_.lpNorm<Eigen::Infinity>() << endl;
-
-                  /*  for (int i=0; i < poses_.size(); i++) {
-                        cout << "pose " << i << " is " << endl << poses_[i]->pose_.matrix() << endl;
-                    }
-                    for (int i=0; i < 5; i++) {
-                        cout << "in error " << i << " pose " << errors_[i]->pose_->id_ << " is " << endl << errors_[i]->pose_->pose_.matrix() << endl;
-                    }*/
                     mu_ = mu_ * upsilon_;
                     upsilon_ = 2 * upsilon_;
-             //       cout << "mu = " << mu_ << endl << "upsilon = " << upsilon_ << endl;
                 }
             }
 
@@ -212,15 +146,7 @@ namespace vslam {
 
         }
 
-       // cout << "************************* after optimization******************************" << endl;
-       /* for (int i = 0; i < poses_.size(); i++){
-            BAPose::Ptr pose = poses_[i];
-            cout << "pose " << pose->id_ << " is " << endl << pose->pose_.matrix() << endl;
-        } */
-       /* for (int i = 0; i < points_.size(); i++){
-            BAPoint::Ptr point= points_[i];
-            cout << "point " << point->id_ << " is " << endl << point->point_ << endl;
-        }*/
+
     }
 
     void BAOptimizer::initial() {
@@ -304,15 +230,6 @@ namespace vslam {
         maxDiaH_ = 0;
 
 
-
-        //MatrixXd J_;
-        //J_.resize(2*errors_.size(), 6*poses_.size()+3*points_.size());
-        //J_.setZero();
-
-
-        //e_.resize(2*errors_.size());
-       // e_.setZero();
-
         // compute J, H, error, J*error, using block matrix operations
         for (int i = 0; i < errors_.size(); i++) {
             BAError::Ptr term = errors_[i];
@@ -331,15 +248,6 @@ namespace vslam {
                 g_.segment(6*poses_.size() + 3*(term->point3d_->id_), 3) -= Jp.transpose() * e;
             }
 
-
-
-          //  J_.block(term->point3d_->id_*2,  term->pose_->id_ * 6, 2, 6) = Jc;
-
-           // J_.block(term->point3d_->id_*2, 6*poses_.size()+ term->point3d_->id_*3, 2, 3) = Jp;
-
-          //  e_.segment(term->point3d_->id_*2, 2) = e;
-
-
             if (ba_type_ == BA_POSE) {
                 Hcc_[term->pose_->id_] += Jc.transpose() * Jc;
                 g_.segment(6*(term->pose_->id_), 6) -= Jc.transpose() * e;
@@ -350,38 +258,11 @@ namespace vslam {
                 g_.segment(3*(term->point3d_->id_), 3) -= Jp.transpose() * e;
 
             }
-            sumError2_ += e.transpose()*e;
+            if (e.norm() < huber_)
+                sumError2_ += e.transpose()*e;
+            else
+                sumError2_ += 2*huber_*e.norm() - huber_*huber_;
         }
-
-
-
-
-      //  cout << "full J is" << endl << J_ << endl;
-//
-    //    HH_ = J_.transpose() * J_;
-
-
-   //     gg_ = -J_.transpose() * e_;
-
-
-   //     maxDiaHH_ = 0;
-
-    //    maxDiaHH_ = HH_.diagonal().lpNorm<Eigen::Infinity>();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         if (ba_type_ == BA_FULL || ba_type_ == BA_POSE) {
             for (int i = 0; i < Hcc_.size(); i++) {
@@ -409,102 +290,12 @@ namespace vslam {
             }
         }
 
-
-
-  //      HH_ += tau_ * maxDiaHH_ * MatrixXd::Identity(HH_.rows(), HH_.cols());
-
-//        MatrixXd BB_ = HH_.block(0, 0, 6*poses_.size(), 6*poses_.size());
-//
- //       MatrixXd CC_ = HH_.block(6*poses_.size(), 6*poses_.size(), 3*points_.size(), 3*points_.size());
-
-  //      MatrixXd EE_ = HH_.block(0, 6*poses_.size(), 6*poses_.size(), 3*points_.size());
-
-   //     MatrixXd HHS_ = BB_ - EE_ * CC_.inverse() * EE_.transpose();
-
-    //    cout << "HHS is" << endl << HHS_ << endl;
-
-
-
-
-
-
-
     }
 
     void BAOptimizer::marginalize() {
 
         S_.setZero();
         gs_.setZero();
-
-//        typedef Matrix<double, 6, 1> Vector6d;
- //       vector<Vector6d> ECbp(poses_.size(), Vector6d::Zero());
-
-
-
- /************** for test **************************/
- /*       MatrixXd H_;
-        H_.resize(6*poses_.size()+3*points_.size(), 6*poses_.size()+3*points_.size());
-        H_.setZero();
-        for (int i = 0; i < poses_.size(); i++) {
-            H_.block(6*i, 6*i, 6, 6) = Hcc_[i];
-        }
-        for (int i = 0; i < points_.size(); i++) {
-            H_.block(6*poses_.size()+3*i, 6*poses_.size()+3*i, 3, 3) = Hpp_[i];
-        }
-        for (int i = 0; i < poses_.size(); i++) {
-            for (int j = 0; j < points_.size(); j++) {
-                H_.block(6*i, 6*poses_.size()+3*j, 6, 3) = Hcp_[i][j];
-            }
-        }
-        for (int j = 0; j < points_.size(); j++) {
-            for (int i = 0; i < poses_.size(); i++) {
-                H_.block(6*poses_.size()+3*j, 6*i,3,6) = Hcp_[i][j].transpose();
-            }
-        }
-
-
-        cout << "H is" << endl << H_ << endl;
-
-        MatrixXd B_ = H_.block(0, 0, 6*poses_.size(), 6*poses_.size());
-
-        cout << "B is " << endl << B_ << endl;
-
-        MatrixXd C_ = H_.block(6*poses_.size(), 6*poses_.size(), 3*points_.size(), 3*points_.size());
-        cout << "C is " << endl << C_ << endl;
-
-
-        MatrixXd E_ = H_.block(0, 6*poses_.size(), 6*poses_.size(), 3*points_.size());
-        cout << "E is " << endl << E_ << endl;
-
-
-        MatrixXd HS_ = B_ - E_ * C_.inverse() * E_.transpose();
-
-        cout << "HS is" << endl << HS_ << endl;
-
-
-
-        VectorXd GS_ = g_.segment(0, 6*poses_.size()) - E_ * C_.inverse() * g_.segment(6*poses_.size(), 3*points_.size());
-
-        cout << "GS_ is" << endl << GS_ << endl;
-
-        VectorXd Xc_ = HS_.fullPivLu().solve(GS_);
-
-
-        VectorXd Xp_ = C_.inverse() * (g_.segment(6*poses_.size(), 3*points_.size()) - E_.transpose() * Xc_);
-
-        VectorXd DX_;
-        DX_.resize(g_.size());
-
-        DX_ << Xc_, Xp_;
-
-        cout << "Delta X is" << endl << DX_ << endl;
-
-
-        DXXX_ = H_.fullPivLu().solve(g_);
-
-        cout << "Full Delta X is" << endl << DXXX_ << endl;
-*/
-
 
         if (ba_type_ == BA_FULL) {
             // assign Hcc to diagonal block of S
@@ -522,31 +313,12 @@ namespace vslam {
             for (int k = 0; k < points_.size(); k++) {
                 for (int i = 0; i < poses_.size(); i++) {
                     Matrix<double, 6, 3> HcpiHppInvk = Hcp_[i][k] * HppInv_[k];
-
-                  //  ECbp[i] += HcpiHppInvk * g_.segment(6 * poses_.size() + 3*k, 3);
-
-
                     for (int j = i; j < poses_.size(); j++) {
                         S_.block(6 * i, 6 * j, 6, 6) -= HcpiHppInvk * Hcp_[j][k].transpose();
                     }
                     gs_.segment(6 * i, 6) -= HcpiHppInvk * g_.segment(6 * poses_.size() + 3 * k, 3);
                 }
             }
-/*
-            for (int k = 0; k < poses_.size(); k++) {
-                gs_.segment(6 * k, 6) = g_.segment(6*k, 6) - ECbp[k];
-            } */
-
-
-
-
-
-
-
-
-
-
-
             // determine the lower trianglar block of S
             for (int i = 0; i < poses_.size(); i++) {
                 for (int j = i+1; j < poses_.size(); j++) {
@@ -580,11 +352,8 @@ namespace vslam {
                 Vector3d Temp = g_.segment(6*poses_.size() + 3 * k, 3);
                 for (int i = 0; i < poses_.size(); i++) {
                     Temp -= Hcp_[i][k].transpose() * delta_x_.segment(6 * i, 6);
-                    //Temp += Hcp_[i][k].transpose() * delta_x_.segment(6 * i, 6);
                 }
                 delta_x_.segment(6*poses_.size() + 3*k, 3) = HppInv_[k] * Temp;
-                //delta_x_.segment(6*poses_.size() + 3*k, 3) = HppInv_[k] * (g_.segment(6*poses_.size()+3*k,3) - Temp);
-
             }
         }
         if (ba_type_ == BA_POSE || ba_type_ == BA_POINT) {
@@ -599,19 +368,13 @@ namespace vslam {
             for (int i = 0; i < poses_.size(); i++) {
                 BAPose::Ptr & pose_ = poses_[i];
                 VectorXd delta_pose_ = delta_x_.segment(6 * pose_->id_, 6);
-                //VectorXd delta_pose_ = DXXX_.segment(6*pose_->id_, 6);//delta_x_.segment(6 * pose_->id_, 6);
                 Sophus::SE3 delta_T_ = SE3::exp(delta_pose_);
-              //  cout << "delta pose is " << endl << delta_pose_ << endl;
-              //  cout << "delta T is " << endl << delta_T_.matrix() << endl;
-              //  cout << "pose is " << endl << pose_->pose_.matrix() << endl;
-
                 pose_->pose_ = delta_T_ * pose_->pose_;
             }
             // for map point, using plus
             for (int i = 0; i < points_.size(); i++) {
                 BAPoint::Ptr & point_ = points_[i];
                 Vector3d delta_point_ = delta_x_.segment(6*poses_.size() + 3 * point_->id_, 3);
-                //Vector3d delta_point_ = DXXX_.segment(6*poses_.size()+3*point_->id_,3);//delta_x_.segment(6*poses_.size() + 3 * point_->id_, 3);
                 point_->point_ = delta_point_ + point_->point_;
             }
         }
@@ -664,8 +427,6 @@ namespace vslam {
             }
         }
     }
-
-
 
 }
 

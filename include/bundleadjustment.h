@@ -64,6 +64,8 @@ namespace vslam {
 
         void setType(BA_TYPE);
 
+        void setHuber(double huber);
+
         void setVerbose(bool verbose);
 
         void addPose(BAPose::Ptr);
@@ -123,16 +125,10 @@ namespace vslam {
         double upsilon_ = 2.0;
         double mu_;
         double sumError2_;
-
+        double huber_ = 1.0;
 
         BA_TYPE ba_type_;
 
-        //MatrixXd HH_;
-       // VectorXd gg_;
-       // VectorXd DXXX_;
-       // VectorXd e_;
-
-        //double maxDiaHH_;
         bool verbose_ = true;
 
     };
